@@ -18,11 +18,8 @@ cargo test
 
 ## How to Deploy?
 
-Deployment is automated with GitHub Actions CI/CD pipeline.
-To deploy manually, install [`cargo-near`](https://github.com/near/cargo-near) and run:
-
 ```bash
-cargo near deploy build-reproducible-wasm <account-id>
+near deploy <account-id> ./target/near/hash_storage.wasm
 ```
 
 ## Useful Links
