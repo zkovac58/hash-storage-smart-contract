@@ -1,55 +1,66 @@
-// Find all our documentation at https://docs.near.org
+use near_sdk::json_types::U64;
+use near_sdk::store::LookupMap;
 use near_sdk::{log, near};
 
-// Define the contract structure
-#[near(contract_state)]
-pub struct Contract {
-    greeting: String,
+#[near(serializers = [borsh, json])]
+#[derive(Clone)]
+pub struct EntityState {
+    state_hash: String,
+    last_updated: U64,
 }
 
-// Define the default, which automatically initializes the contract
+#[near(contract_state)]
+pub struct Contract {
+    entity_states: LookupMap<U64, EntityState>,
+}
+
 impl Default for Contract {
     fn default() -> Self {
         Self {
-            greeting: "Hello".to_string(),
+            entity_states: LookupMap::new(b"e"),
         }
     }
 }
 
-// Implement the contract structure
 #[near]
 impl Contract {
-    // Public method - returns the greeting saved, defaulting to DEFAULT_GREETING
-    pub fn get_greeting(&self) -> String {
-        self.greeting.clone()
+
+    pub fn get_entity_state_hash(&self, entity_id: U64) -> Option<EntityState> {
+        self.entity_states.get(&entity_id).cloned()
     }
 
-    // Public method - accepts a greeting, such as "howdy", and records it
-    pub fn set_greeting(&mut self, greeting: String) {
-        log!("Saving greeting: {greeting}");
-        self.greeting = greeting;
+    pub fn update_entity_state(&mut self, entity_id: U64, state_hash: String, last_updated: U64) {
+        log!("Saving state hash for {:?}: {}", entity_id, state_hash);
+
+        let entity_state = EntityState {
+            state_hash: state_hash.clone(),
+            last_updated: last_updated,
+        };
+
+        self.entity_states.insert(entity_id, entity_state);
+
+        log!("Entity state updated successfully for {:?}", entity_id);
     }
 }
 
-/*
- * The rest of this file holds the inline tests for the code above
- * Learn more about Rust tests: https://doc.rust-lang.org/book/ch11-01-writing-tests.html
- */
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn get_default_greeting() {
-        let contract = Contract::default();
-        // this test did not call set_greeting so should return the default "Hello" greeting
-        assert_eq!(contract.get_greeting(), "Hello");
-    }
-
-    #[test]
-    fn set_then_get_greeting() {
+    fn update_entity_state_hash_then_check_storage() {
         let mut contract = Contract::default();
-        contract.set_greeting("howdy".to_string());
-        assert_eq!(contract.get_greeting(), "howdy");
+
+        let entity_id: u64 = 1;
+        let state_hash = "new_state_hash".to_string();
+
+        contract.update_entity_state(U64::from(entity_id), state_hash.clone(), U64::from(1736457668));
+
+        let retrieved_entity_state_hash = contract.get_entity_state_hash(U64::from(entity_id));
+
+        assert!(retrieved_entity_state_hash.is_some(), "Entity state was not found"); 
+        let retrieved_state_hash = retrieved_entity_state_hash.unwrap(); 
+        assert_eq!(retrieved_state_hash.state_hash, state_hash, "Entity state hash was not updated correctly");
     }
 }
